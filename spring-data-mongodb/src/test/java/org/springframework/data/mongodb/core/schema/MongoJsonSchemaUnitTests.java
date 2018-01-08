@@ -47,32 +47,34 @@
  */
 package org.springframework.data.mongodb.core.schema;
 
+import static org.springframework.data.mongodb.test.util.Assertions.*;
+
+import java.util.Arrays;
+
 import org.bson.Document;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.data.mongodb.core.convert.DbRefResolver;
 
 /**
  * @author Christoph Strobl
- * @since 2017/12
  */
 @RunWith(MockitoJUnitRunner.class)
 public class MongoJsonSchemaUnitTests {
 
-	@Mock DbRefResolver dbRefResolver;
-
-	@Test
-	public void xxx() {
+	@Test // DATAMONGO-1835
+	public void toDocumentRendersSchemaCorrectly() {
 
 		MongoJsonSchema schema = MongoJsonSchema.builder() //
 				.required("firstname", "lastname") //
-				.properties(JsonSchemaProperty.string("firstname").maxLength(10)) //
 				.build();
 
-		Document document = schema.toDocument();
-		System.out.println("document: " + document);
+		assertThat(schema.toDocument()).isEqualTo(new Document("$jsonSchema",
+				new Document("type", "object").append("required", Arrays.asList("firstname", "lastname"))));
 	}
 
+	@Test(expected = IllegalArgumentException.class) // DATAMONGO-1835
+	public void throwsExceptionOnNullRoot() {
+		MongoJsonSchema.of(null);
+	}
 }

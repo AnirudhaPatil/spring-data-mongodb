@@ -55,15 +55,19 @@ import java.util.List;
 
 import org.bson.Document;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.data.mongodb.config.AbstractMongoConfiguration;
+import org.springframework.data.mongodb.core.CollectionOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MongoJsonSchemaMapper;
 import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.test.util.MongoVersionRule;
+import org.springframework.data.util.Version;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
@@ -81,6 +85,8 @@ import com.mongodb.client.model.ValidationOptions;
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration
 public class MongoJsonSchemaTests {
+
+	public static @ClassRule MongoVersionRule REQUIRES_AT_LEAST_3_6_0 = MongoVersionRule.atLeast(Version.parse("3.6.0"));
 
 	@Configuration
 	static class Config extends AbstractMongoConfiguration {
@@ -105,7 +111,47 @@ public class MongoJsonSchemaTests {
 	}
 
 	@Test // DATAMONGO-1835
-	public void writeSchema() {
+	public void writeSchemaViaTemplate() {
+
+		MongoJsonSchema schema = MongoJsonSchema.builder() //
+				.required("firstname", "lastname") //
+				.properties( //
+						JsonSchemaProperty.string("firstname").possibleValues("luke", "han").maxLength(10), //
+						JsonSchemaProperty.object("address") //
+								.properties(JsonSchemaProperty.string("postCode").minLength(4).maxLength(5))
+
+				).build();
+
+		template.createCollection(Person.class, CollectionOptions.empty().schema(schema));
+
+		Document $jsonSchema = new MongoJsonSchemaMapper(template.getConverter()).mapSchema(schema.toDocument(),
+				Person.class);
+
+		Document fromDb = readSchemaFromDatabase("persons");
+		assertThat(fromDb).isEqualTo($jsonSchema);
+	}
+
+	@Test // DATAMONGO-1835
+	public void nonMappedSchema() {
+
+		MongoJsonSchema schema = MongoJsonSchema.builder() //
+				.required("firstname", "lastname") //
+				.properties( //
+						JsonSchemaProperty.string("firstname").possibleValues("luke", "han").maxLength(10), //
+						JsonSchemaProperty.object("address") //
+								.properties(JsonSchemaProperty.string("postCode").minLength(4).maxLength(5))
+
+				).build();
+
+		template.createCollection("persons", CollectionOptions.empty().schema(schema));
+
+		Document fromDb = readSchemaFromDatabase("persons");
+		assertThat(fromDb)
+				.isNotEqualTo(new MongoJsonSchemaMapper(template.getConverter()).mapSchema(schema.toDocument(), Person.class));
+	}
+
+	@Test // DATAMONGO-1835
+	public void writeSchemaManually() {
 
 		MongoJsonSchema schema = MongoJsonSchema.builder() //
 				.required("firstname", "lastname") //

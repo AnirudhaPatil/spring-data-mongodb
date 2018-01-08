@@ -190,8 +190,6 @@ public class MongoJsonSchemaMapperUnitTests {
 		assertThat(mapper.mapSchema(schema.toDocument(), Student.class)).isEqualTo(Document.parse(complexSchemaJsonString));
 	}
 
-	// TODO: make sure to run enum fields through the converter so that values get mapped correctly !!!
-
 	static class Student {
 
 		String name;

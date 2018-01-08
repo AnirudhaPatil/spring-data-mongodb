@@ -35,6 +35,7 @@ import org.springframework.data.geo.Shape;
 import org.springframework.data.mongodb.InvalidMongoDbApiUsageException;
 import org.springframework.data.mongodb.core.geo.GeoJson;
 import org.springframework.data.mongodb.core.geo.Sphere;
+import org.springframework.data.mongodb.core.schema.MongoJsonSchema;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -113,6 +114,20 @@ public class Criteria implements CriteriaDefinition {
 	 */
 	public static Criteria byExample(Example<?> example) {
 		return new Criteria().alike(example);
+	}
+
+	/**
+	 * Static factory method to create a {@link Criteria} matching documents against a given structure defined by the
+	 * {@link MongoJsonSchema} using ({@code $jsonSchema}) operator.
+	 *
+	 * @param schema must not be {@literal null}.
+	 * @return this
+	 * @since 2.1
+	 * @see <a href="https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/">MongoDB Query operator:
+	 *      $jsonSchema</a>
+	 */
+	public static Criteria matchingDocumentStructure(MongoJsonSchema schema) {
+		return new Criteria().andDocumentStructureMatches(schema);
 	}
 
 	/**
@@ -561,6 +576,26 @@ public class Criteria implements CriteriaDefinition {
 		criteria.put("$example", sample);
 		this.criteriaChain.add(this);
 		return this;
+	}
+
+	/**
+	 * Creates a criterion ({@code $jsonSchema}) matching documents against a given structure defined by the
+	 * {@link MongoJsonSchema}.
+	 *
+	 * @param schema must not be {@literal null}.
+	 * @return this
+	 * @since 2.1
+	 * @see <a href="https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/">MongoDB Query operator:
+	 *      $jsonSchema</a>
+	 */
+	public Criteria andDocumentStructureMatches(MongoJsonSchema schema) {
+
+		Assert.notNull(schema, "Schema must not be null!");
+
+		Criteria schemaCriteria = new Criteria();
+		schemaCriteria.criteria.putAll(schema.toDocument());
+
+		return registerCriteriaChainElement(schemaCriteria);
 	}
 
 	/**
